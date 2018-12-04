@@ -33,7 +33,7 @@ class Debug:
             print('%s\tMean:%.3f\tStd:%.3f\tMin:%.3f\tMax:%.3f'\
                     %(k,np.mean(x), np.std(x),np.min(x),np.max(x)))
     def get_comments(self):
-        fs=np.floor(np.mean(self.data['rec_freq']))
+        fs=np.floor(np.mean(self.data['rec_freq_8050']))
         bfs=np.mean(self.data['send_freq'])
         msg='We are receiving data at around %.2f Hz '%fs
         msg+='and storing them into %d-sample buffers.\n'%self.buffer.N

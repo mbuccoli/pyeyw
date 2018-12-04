@@ -2,11 +2,11 @@ import time
 import numpy as np
 from threading import Thread
 from debug import d
-
+import pickle
 
     
 class FeatureProcess(Thread):    
-    def __init__(self, buffer,sender):
+    def __init__(self, buffer,sender,**kwargs):
         Thread.__init__(self)
         self.buffer=buffer
         self.N, self.hs=buffer.N, buffer.hopsize
@@ -58,3 +58,121 @@ class FeatureProcess(Thread):
     def send(self):        
         self.sender.set_data(self.out_data)
         self.sender.send()
+
+
+
+class DummyFeature(FeatureProcess):
+    def __init__(self, **kwargs):
+        FeatureProcess.__init__(self, **kwargs)
+        #self.f=2*(2*np.pi)
+        #self.t0=time.time()
+        self.Nfft=int(self.N/2+1)
+        self.main_idxs=None
+        self.main_labels=None
+        self.main_points=None
+        self.main_fft3D=None
+        self.centroid=None
+        self.f=np.linspace(0,1,self.Nfft)        
+        
+        
+    def find_main_points(self):        
+        labels=['Hips','Head','LeftHand','RightHand','LeftFoot','RightFoot']
+        compute=True
+        if self.main_idxs is not None:
+            compute=not np.all([self.main_labels[i]==self.cur_labels[idx] \
+                                for i, idx in enumerate(self.main_idxs)])
+            
+            
+        if compute:
+            self.main_idxs=[ [j for j, label in enumerate(self.cur_labels) if label.endswith(l)][0] for l in labels]
+            self.main_labels=[self.cur_labels[j] for j in self.main_idxs]
+            
+        self.main_points=self.cur_data['p'][:,self.main_idxs,:]      
+        
+    def compute_fft3D(self):        
+        norm=np.linalg.norm(np.array(self.main_points),axis=2)        
+        self.main_fft3D=np.log10(1e-6+np.abs(np.fft.fft(norm,axis=0)[:self.Nfft,:]))
+        
+    def compute_norm_centroid(self):        
+        x=self.main_fft3D[1:,:]
+        self.centroid=np.sum(self.f[1:]*np.sum(x,axis=1))/np.sum(x.flatten())
+        
+    def compute_ft(self):        
+        self.find_main_points()
+        self.compute_fft3D()
+        self.compute_norm_centroid()
+        self.out_data=(np.tanh(6*(1-2*self.centroid))+1)/2
+
+
+
+class Fluidity_Heaviness(FeatureProcess):
+    def __init__(self, **kwargs):
+        FeatureProcess.__init__(self, **kwargs)        
+        self.Nfft=int(self.N/2+1)
+        self.main_idxs=None
+        self.main_labels=None
+        self.main_points=None
+        self.main_fft3D=None
+        self.centroid=None
+        self.f=np.linspace(0,1,self.Nfft)     
+        
+        self.trigger=kwargs["trigger"]
+        self.models={'Fluidity':kwargs["models"]["Fluidity"]}
+        self.features={'Fluidity':.5}
+        for ft in self.models:
+            model=self.models[ft]
+            if type(model) ==str:
+                with open(model,'rb') as fp:
+                    self.models[ft]=pickle.load(fp)
+        print(self.models)
+        
+        
+    
+            
+    def find_main_points(self):        
+        labels=['Hips','Head','LeftHand','RightHand','LeftFoot','RightFoot']
+        compute=True
+        if self.main_idxs is not None:
+            compute=not np.all([self.main_labels[i]==self.cur_labels[idx] \
+                                for i, idx in enumerate(self.main_idxs)])
+            
+            
+        if compute:
+            self.main_idxs=[ [j for j, label in enumerate(self.cur_labels) if label.endswith(l)][0] for l in labels]
+            self.main_labels=[self.cur_labels[j] for j in self.main_idxs]
+            
+        self.main_points=self.cur_data['p'][:,self.main_idxs,:]      
+        
+    def compute_fft3D(self):        
+        norm=np.linalg.norm(np.array(self.main_points),axis=2)        
+        self.main_fft3D=np.log10(1e-6+np.abs(np.fft.fft(norm,axis=0)[:self.Nfft,:]))
+        
+    def predict_fluidity(self):
+        #print(self.main_fft3D.shape)
+        
+        y_p=self.models["Fluidity"].predict(self.main_fft3D.flatten().reshape(1,-1))
+        #y_p=self.models["Fluidity"].predict_proba(self.main_fft3D)
+        #print('Y_p=',y_p)
+        #y_p=np.sum(y_p*np.array([[0,.5,1]]),axis=1).flatten()        
+        #print('Y_p sum mul=',y_p)        
+        self.features["Fluidity"]=self.features["Fluidity"]*.9+y_p*.05 #/2*0.1
+        #print('Self FT=',self.features["Fluidity"])
+        
+    
+    def set_fluidity(self):
+        self.out_data=self.features["Fluidity"]
+    def set_none(self):
+        self.out_data=None
+        self.features["Fluidity"]=0.5
+        
+    def compute_ft(self):        
+        self.find_main_points()
+        mq=self.trigger.buffer
+        
+        if mq=="Fluidity":
+            self.compute_fft3D()
+            self.predict_fluidity()
+            self.set_fluidity()
+        else:
+            self.set_none()
+        #self.out_data=(np.tanh(6*(1-2*self.centroid))+1)/2
