@@ -33,13 +33,15 @@ class Receiver(Semaphore, Thread):
         
 
 class Sender(Thread,Semaphore):    
-    def __init__(self, ip, port):                
+    def __init__(self, ip, port,freq=100):                
         
         Thread.__init__(self)        
         Semaphore.__init__(self, value=1)                
         self.port=port
         self.address=(ip, port)
         self.lT=time.time()
+        self.time_wait=1./freq
+        
         self.socket = socket.socket(socket.AF_INET, # Internet
                                     socket.SOCK_DGRAM) # UDP
         
@@ -48,6 +50,8 @@ class Sender(Thread,Semaphore):
         self.out_data=None
         self.status="inactive"
     def set_data(self, data):
+        pass
+        #print("SD: Waiting for the Semaphore")
         self.acquire()
         self.status="set_data"
     
@@ -56,17 +60,21 @@ class Sender(Thread,Semaphore):
         else:
             self.out_data=struct.pack("d",data)
         self.release()
+        #print("SD: Released the Semaphore")
     def send(self):
+        pass
+        #print("SEND: Waiting for the Semaphore")
         self.acquire()
         
-        if self.out_data is None:
-            self.release()
-            return        
-        self.status="sending"
-        self.socket.sendto(self.out_data, self.address)    
-        d.collect_data('send_freq_%d'%self.port,1/(1e-6+time.time()-self.lT))                
-        self.lT=time.time()        
+        if self.out_data is not None:
+            self.status="sending"
+            self.socket.sendto(self.out_data, self.address)    
+            d.collect_data('send_freq_%d'%self.port,1/(1e-6+time.time()-self.lT))                
+            self.lT=time.time()        
+        
         self.release()
+        time.sleep(self.time_wait)
+        #print("SEND: Released the Semaphore")
         
     def run(self):        
             while True:                

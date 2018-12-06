@@ -11,11 +11,13 @@ from buffer import Buffer
                 
 
 if __name__=='__main__':
+    HOPSIZE=2
+    FR=30.
     receiver_data=Receiver("127.0.0.1",8017)
     receiver_ft=Receiver("127.0.0.1",9017)
     
-    sender=Sender("127.0.0.1",8050)
-    buffer=Buffer(receiver_data,Nbuffer=128,hopsize=8)
+    sender=Sender("127.0.0.1",8050,freq=FR/HOPSIZE)
+    buffer=Buffer(receiver_data,Nbuffer=128,hopsize=HOPSIZE)
     feature_trigger=Buffer(receiver_ft,Nbuffer=1,hopsize=1,type_in="str")
     
     data_driven_mq=Fluidity_Heaviness(buffer=buffer, \
@@ -27,8 +29,8 @@ if __name__=='__main__':
     receiver_data.start()
     receiver_ft.start()
     
-    sender.start()
+    
     buffer.start()
     feature_trigger.start()
     data_driven_mq.start()
-    
+    sender.start()

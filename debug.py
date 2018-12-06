@@ -33,17 +33,17 @@ class Debug:
             print('%s\tMean:%.3f\tStd:%.3f\tMin:%.3f\tMax:%.3f'\
                     %(k,np.mean(x), np.std(x),np.min(x),np.max(x)))
     def get_comments(self):
-        fs=np.floor(np.mean(self.data['rec_freq_8050']))
-        bfs=np.mean(self.data['send_freq'])
+        fs=np.floor(np.mean(self.data['rec_freq_8017']))
+        bfs=np.mean(self.data['send_freq_8050'])
         msg='We are receiving data at around %.2f Hz '%fs
         msg+='and storing them into %d-sample buffers.\n'%self.buffer.N
-        msg+='Since hopsize is %d, we should a new buffer at %.2f Hz '\
+        msg+='Since hopsize is %d, we should create a new buffer at %.2f Hz '\
                 %(self.buffer.hopsize,fs/self.buffer.hopsize)
         msg+=' which is about the send frequency %.2f Hz.\n'%bfs
         msg+='Moreover, we create a new buffer every %.2f ms '\
                 %float(1000*self.buffer.hopsize/fs)
         msg+='which must be higher than the sum of the time required for the following operations:\n'
-        operations={'Clean data':'clean_data_time','Buffering':'buffer_time','Features':'feature_time'}
+        operations={'Clean data':'clean_data_time','Buffering':'buffer_time_128','Features':'feature_time'}
         
         msg+= ' + \n'.join(['\t%s:\t%.2f '%(op,np.mean(self.data[operations[op]])) for op in operations])
         val_sum=np.sum([np.mean(self.data[operations[op]]) for op in operations])

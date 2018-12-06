@@ -41,31 +41,34 @@ class FeatureProcess(Thread):
                 self.cur_data['p'][f,k,:]=d_k['value']['position']
                 self.cur_data['r'][f,k,:]=d_k['value']['rotation']
                 self.cur_data['q'][f,k,:]=d_k['value']['quaternion']
-        self.cur_data['p'][f_start:,:,:]/=1000.
+        self.cur_data['p'][f_start:,:,:]/=10#00.
         d.collect_data('clean_data_time',(time.time()-cT)*1000)                        
         return True    
         
         
     def run(self):
         while True:
+            #print("FT: acquiring data...")
             rough_data=self.buffer.acquire()
             
             if self.clean_data(rough_data):        
                 cT=time.time()
+                #print("FT: computing ft...")
                 self.compute_ft()
                 d.collect_data('feature_time',(time.time()-cT)*1000)                
+                #print("FT: sending...")
                 self.send()
     def send(self):        
+        #print("FT: setting data...")
         self.sender.set_data(self.out_data)
-        self.sender.send()
+        #print("FT: sending data...")
+        #self.sender.send()
 
 
 
 class DummyFeature(FeatureProcess):
     def __init__(self, **kwargs):
-        FeatureProcess.__init__(self, **kwargs)
-        #self.f=2*(2*np.pi)
-        #self.t0=time.time()
+        FeatureProcess.__init__(self, **kwargs)        
         self.Nfft=int(self.N/2+1)
         self.main_idxs=None
         self.main_labels=None
@@ -124,7 +127,7 @@ class Fluidity_Heaviness(FeatureProcess):
             if type(model) ==str:
                 with open(model,'rb') as fp:
                     self.models[ft]=pickle.load(fp)
-        print(self.models)
+        print("Loading models...",self.models)
         
         
     
@@ -166,12 +169,16 @@ class Fluidity_Heaviness(FeatureProcess):
         self.features["Fluidity"]=0.5
         
     def compute_ft(self):        
+        #print("FH: finding main points...")
         self.find_main_points()
         mq=self.trigger.buffer
-        
+        #print(mq)
         if mq=="Fluidity":
+            #print("FH: computing fft...")
             self.compute_fft3D()
+            #print("FH: predicting fluidity...")
             self.predict_fluidity()
+            #print("FH: set fluidity...")
             self.set_fluidity()
         else:
             self.set_none()

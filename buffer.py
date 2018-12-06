@@ -44,7 +44,7 @@ class Buffer(Thread, Semaphore):
             self.hopsize=int(hopsize*self.N)
         else:            
             self.hopsize=hopsize
-        d.msg(self.hopsize)
+        #d.msg(self.hopsize)
         self.receiver=receiver
         self.lT=time.time()
     def __update_buffer_N(self,data):
