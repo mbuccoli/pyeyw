@@ -20,7 +20,8 @@ class FeatureProcess(Thread):
         self.cur_labels= np.array([d_k['label'] for d_k in data[0]['data']])        
         last_labels=np.array([d_k['label'] for d_k in data[-1]['data']])        
         
-        if not np.all(self.cur_labels==last_labels):
+        if self.cur_labels.size!=last_labels.size \
+            or not np.all(self.cur_labels==last_labels):
             self.cur_data=None
             self.cur_labels=None
             return False
@@ -92,9 +93,15 @@ class DummyFeature(FeatureProcess):
             
         self.main_points=self.cur_data['p'][:,self.main_idxs,:]      
         
-    def compute_fft3D(self):        
-        norm=np.linalg.norm(np.array(self.main_points),axis=2)        
-        self.main_fft3D=np.log10(1e-6+np.abs(np.fft.fft(norm,axis=0)[:self.Nfft,:]))
+    def compute_fft3D(self):      
+    
+        main_fft3D=np.abs(np.fft.fft(self.main_points,axis=0)[:self.Nfft,:])
+        norm=np.linalg.norm(np.array(main_fft3D),axis=2)
+        self.main_fft3D=np.log10(1e-6+norm)
+    
+      
+        #norm=np.linalg.norm(np.array(self.main_points),axis=2)        
+        #self.main_fft3D=np.log10(1e-6+np.abs(np.fft.fft(norm,axis=0)[:self.Nfft,:]))
         
     def compute_norm_centroid(self):        
         x=self.main_fft3D[1:,:]
@@ -144,12 +151,14 @@ class Fluidity_Heaviness(FeatureProcess):
             self.main_idxs=[ [j for j, label in enumerate(self.cur_labels) if label.endswith(l)][0] for l in labels]
             self.main_labels=[self.cur_labels[j] for j in self.main_idxs]
             
-        self.main_points=self.cur_data['p'][:,self.main_idxs,:]      
+        self.main_points=self.cur_data['p'][:,self.main_idxs,:] -   \
+                         self.cur_data['p'][:,[0],:] 
         
     def compute_fft3D(self):        
-        norm=np.linalg.norm(np.array(self.main_points),axis=2)        
-        self.main_fft3D=np.log10(1e-6+np.abs(np.fft.fft(norm,axis=0)[:self.Nfft,:]))
-        
+    
+        main_fft3D=np.abs(np.fft.fft(self.main_points,axis=0)[:self.Nfft,:])
+        norm=np.linalg.norm(np.array(main_fft3D),axis=2)
+        self.main_fft3D=np.log10(1e-6+norm)
     def predict_fluidity(self):
         #print(self.main_fft3D.shape)
         
