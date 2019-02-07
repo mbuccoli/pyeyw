@@ -146,23 +146,27 @@ class Fluidity_Heaviness(FeatureProcess):
             compute=not np.all([self.main_labels[i]==self.cur_labels[idx] \
                                 for i, idx in enumerate(self.main_idxs)])
             
-            
+        
         if compute:
             self.main_idxs=[ [j for j, label in enumerate(self.cur_labels) if label.endswith(l)][0] for l in labels]
             self.main_labels=[self.cur_labels[j] for j in self.main_idxs]
             
-        self.main_points=self.cur_data['p'][:,self.main_idxs,:] -   \
-                         self.cur_data['p'][:,[0],:] 
+        self.main_points=self.cur_data['p'][:,self.main_idxs,:]
+        self.main_points[:,1:,:]-=self.main_points[:,[0],:] 
         
-    def compute_fft3D(self):        
-    
+        #print(self.cur_labels)
+        #print(self.cur_data['p'][:,0,:])
+        #print("MainPoints",self.main_idxs)
+        #print("MainPoints",self.main_points[:,1,:])
+    def compute_fft3D(self):            
         main_fft3D=np.abs(np.fft.fft(self.main_points,axis=0)[:self.Nfft,:])
         norm=np.linalg.norm(np.array(main_fft3D),axis=2)
         self.main_fft3D=np.log10(1e-6+norm)
     def predict_fluidity(self):
-        #print(self.main_fft3D.shape)
-        
+        #print(self.main_fft3D.shape)   
+        #print("MainFFT3D",self.main_fft3D[:,1])     
         y_p=self.models["Fluidity"].predict(self.main_fft3D.flatten().reshape(1,-1))
+        print("\rPrediction: %.2f\t\t"%y_p, end="")
         #y_p=self.models["Fluidity"].predict_proba(self.main_fft3D)
         #print('Y_p=',y_p)
         #y_p=np.sum(y_p*np.array([[0,.5,1]]),axis=1).flatten()        
@@ -189,6 +193,7 @@ class Fluidity_Heaviness(FeatureProcess):
             self.predict_fluidity()
             #print("FH: set fluidity...")
             self.set_fluidity()
+            #print("\rFluidity: %.2f\t\t"%self.features["Fluidity"],end="")
         else:
             self.set_none()
         #self.out_data=(np.tanh(6*(1-2*self.centroid))+1)/2

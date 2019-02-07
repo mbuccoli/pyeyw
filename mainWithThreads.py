@@ -13,6 +13,20 @@ from buffer import Buffer
 
 if __name__=='__main__':
     
+
+    import ctypes, sys
+
+    def is_admin():
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except:
+            return False
+
+    if not is_admin():	    
+	    # Re-run the program with admin rights
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+
+
     this_dir=os.path.dirname(os.path.abspath(__file__))
     HOPSIZE=2
     FR=30.
@@ -38,7 +52,7 @@ if __name__=='__main__':
     data_driven_mq.start()
     sender.start()
     x=""
-    while x!="stop":
+    while x not in ["stop","exit","quit"]:
         x=input("\n> ")
         if x=="debug":
             d.get_comments()
